@@ -19,30 +19,31 @@ module.exports = function (app) {
   app.route('/api/stock-prices')
     .get(function (req, res){
       const options = {
-        hostname: 'repeated-alpaca.glitch.me',
-        path: '/v1/stock/GOOG/quote',
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'accept': 'application/json'
+        "method": "GET",
+        "hostname": "apidojo-yahoo-finance-v1.p.rapidapi.com",
+        "port": null,
+        "path": "/stock/v2/get-profile?symbol=GOOG",
+        "headers": {
+          "x-rapidapi-host": "apidojo-yahoo-finance-v1.p.rapidapi.com",
+          "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+          "useQueryString": true
         }
-      }
+      };
 
-      const https_req = https.request(options, (res2) => {
+      const api_req = https.request(options, (api_res) => {
         let data = '';
         // A chunk of data has been recieved.
-        res2.on('data', (d) => {
+        api_res.on('data', (d) => {
           data += d;
         });
         // The whole response has been received. Print out the result.
-        res2.on('end', () => {
-          console.log(data);
-          res.json(data);
+        api_res.on('end', () => {
+          res.json(JSON.parse(data));
         })
       }).on('error', (e) => {
-        res.send('Error on accessing external API.');
+        res.json('{"Error": "Error on accessing external API."}');
       })
-      https_req.end();
+      api_req.end();
 
     });
 
