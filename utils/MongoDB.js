@@ -15,7 +15,11 @@ exports.getLike =  function (symbol){
           }
           console.log(doc);
           // console.log(doc.value.ips);
-          resolve(doc.ips.length);
+          if (doc) {
+            resolve(doc.ips.length);
+          } else {
+            resolve(0);
+          }
         }
       )
     })
