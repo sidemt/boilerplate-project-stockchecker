@@ -9,26 +9,29 @@
 'use strict';
 
 var expect = require('chai').expect;
-// var MongoClient = require('mongodb');
 const https = require('https');
 
-// const CONNECTION_STRING = process.env.DB; //MongoClient.connect(CONNECTION_STRING, function(err, db) {});
+const RapidApi = require('../utils/RapidAPI');
+const MongoDB = require('../utils/MongoDB');
 
 module.exports = function (app) {
 
   app.route('/api/stock-prices')
     .get(function (req, res){
       console.log(req.query.stock);
-      const symbol = req.query.stock;
+      let symbol = req.query.stock;
       console.log('type', typeof symbol);
       if (typeof symbol === 'string') {
-        // yahoo finance API accepts lower or upper case
-        callAPI(symbol).then((price) => {
+        symbol = symbol.toUpperCase();
+        Promise.all([
+          RapidApi.callAPI(symbol),
+          req.query.like ? MongoDB.postLike(symbol, '2.2.2.3') : MongoDB.getLike(symbol)
+        ]).then((values) => {
           let result = {
             "stockData": {
               "stock": `${symbol}`,
-              "price": price,
-              "likes":1
+              "price": values[0],
+              "likes": values[1]
             }
           }
           res.json(result);
@@ -44,19 +47,32 @@ module.exports = function (app) {
         });
 
       } else if (Array.isArray(symbol) && symbol.length === 2) {
-        Promise.all([ callAPI(symbol[0]), callAPI(symbol[1]) ]).then((values) => {
+        symbol = symbol.map(function(elem){
+          if (typeof elem === 'string'){
+            return elem.toUpperCase();
+          } else {
+            return 'ERROR'
+          }
+        })
+
+        Promise.all([
+          RapidApi.callAPI(symbol[0]),
+          req.query.like ? MongoDB.postLike(symbol[0], '2.2.2.3') : MongoDB.getLike(symbol[0]),
+          RapidApi.callAPI(symbol[1]),
+          req.query.like ? MongoDB.postLike(symbol[1], '2.2.2.3') : MongoDB.getLike(symbol[1])
+        ]).then((values) => {
           console.log('values: ', values);
           let result = {
             "stockData": [
               {
                 "stock": `${symbol[0]}`,
                 "price": values[0],
-                "likes": -1
+                "likes": values[1] - values[3]
               },
               {
                 "stock": `${symbol[1]}`,
-                "price": values[1],
-                "likes": 1
+                "price": values[2],
+                "likes": values[3] - values[1]
               },
             ]
           }
@@ -84,39 +100,7 @@ module.exports = function (app) {
 
 
 
-      function callAPI(symbol){
-        const options = {
-          "method": "GET",
-          "hostname": "apidojo-yahoo-finance-v1.p.rapidapi.com",
-          "port": null,
-          "path": `/stock/v2/get-profile?symbol=${symbol}`,
-          "headers": {
-            "x-rapidapi-host": "apidojo-yahoo-finance-v1.p.rapidapi.com",
-            "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-            "useQueryString": true
-          }
-        };
 
-        return new Promise(function (resolve, reject) {
-          const api_req = https.request(options, (api_res) => {
-            let data = '';
-            // A chunk of data has been recieved.
-            api_res.on('data', (d) => {
-              data += d;
-            });
-            // The whole response has been received. Print out the result.
-            api_res.on('end', () => {
-              let parsed = JSON.parse(data);
-              // Return the price in string format
-              resolve(parsed.price.regularMarketPrice.raw.toString());
-            })
-          }).on('error', (e) => {
-            reject(e);
-          })
-          api_req.end();
-        })
-
-      }
 
 
     });
