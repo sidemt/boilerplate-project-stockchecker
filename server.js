@@ -24,8 +24,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(helmet.contentSecurityPolicy({
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
-    styleSrc: ["'self'"]
+    scriptSrc: ["'self'", "'unsafe-inline'", 'code.jquery.com'],
+    styleSrc: ["'self'", "'unsafe-inline'"]
   }
 } ));
 

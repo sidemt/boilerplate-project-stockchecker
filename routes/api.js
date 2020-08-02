@@ -18,32 +18,106 @@ module.exports = function (app) {
 
   app.route('/api/stock-prices')
     .get(function (req, res){
-      const options = {
-        "method": "GET",
-        "hostname": "apidojo-yahoo-finance-v1.p.rapidapi.com",
-        "port": null,
-        "path": "/stock/v2/get-profile?symbol=GOOG",
-        "headers": {
-          "x-rapidapi-host": "apidojo-yahoo-finance-v1.p.rapidapi.com",
-          "x-rapidapi-key": process.env.RAPIDAPI_KEY,
-          "useQueryString": true
-        }
-      };
-
-      const api_req = https.request(options, (api_res) => {
-        let data = '';
-        // A chunk of data has been recieved.
-        api_res.on('data', (d) => {
-          data += d;
+      console.log(req.query.stock);
+      const symbol = req.query.stock;
+      console.log('type', typeof symbol);
+      if (typeof symbol === 'string') {
+        // yahoo finance API accepts lower or upper case
+        callAPI(symbol).then((price) => {
+          let result = {
+            "stockData": {
+              "stock": `${symbol}`,
+              "price": price,
+              "likes":1
+            }
+          }
+          res.json(result);
+        }, (error) => {
+          console.log(error);
+          let result = {
+            "stockData": {
+              "error": "expternal source error",
+              "likes":1
+            }
+          }
+          res.json(result);
         });
-        // The whole response has been received. Print out the result.
-        api_res.on('end', () => {
-          res.json(JSON.parse(data));
+
+      } else if (Array.isArray(symbol) && symbol.length === 2) {
+        Promise.all([ callAPI(symbol[0]), callAPI(symbol[1]) ]).then((values) => {
+          console.log('values: ', values);
+          let result = {
+            "stockData": [
+              {
+                "stock": `${symbol[0]}`,
+                "price": values[0],
+                "likes": -1
+              },
+              {
+                "stock": `${symbol[1]}`,
+                "price": values[1],
+                "likes": 1
+              },
+            ]
+          }
+          res.json(result);
+        }, (error) => {
+          console.log(error);
+          let result = {
+            "stockData": [
+              {
+                "error": "expternal source error",
+                "likes": -1
+              },
+              {
+                "error": "expternal source error",
+                "likes": 1
+              },
+            ]
+          }
+          res.json(result);
+        });
+
+      } else {
+        return res.json('{"Error": "Invalid stock param."}');
+      }
+
+
+
+      function callAPI(symbol){
+        const options = {
+          "method": "GET",
+          "hostname": "apidojo-yahoo-finance-v1.p.rapidapi.com",
+          "port": null,
+          "path": `/stock/v2/get-profile?symbol=${symbol}`,
+          "headers": {
+            "x-rapidapi-host": "apidojo-yahoo-finance-v1.p.rapidapi.com",
+            "x-rapidapi-key": process.env.RAPIDAPI_KEY,
+            "useQueryString": true
+          }
+        };
+
+        return new Promise(function (resolve, reject) {
+          const api_req = https.request(options, (api_res) => {
+            let data = '';
+            // A chunk of data has been recieved.
+            api_res.on('data', (d) => {
+              data += d;
+            });
+            // The whole response has been received. Print out the result.
+            api_res.on('end', () => {
+              let parsed = JSON.parse(data);
+              // Return the price in string format
+              resolve(parsed.price.regularMarketPrice.raw.toString());
+            })
+          }).on('error', (e) => {
+            reject(e);
+          })
+          api_req.end();
         })
-      }).on('error', (e) => {
-        res.json('{"Error": "Error on accessing external API."}');
-      })
-      api_req.end();
+
+      }
+
 
     });
 
