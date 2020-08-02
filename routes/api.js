@@ -50,7 +50,7 @@ module.exports = function (app) {
           let result = {
             "stockData": {
               "error": "expternal source error",
-              "likes":1
+              "likes": 0
             }
           }
           res.json(result);
@@ -77,12 +77,12 @@ module.exports = function (app) {
               {
                 "stock": `${symbol[0]}`,
                 "price": values[0],
-                "likes": values[1] - values[3]
+                "rel_likes": values[1] - values[3]
               },
               {
                 "stock": `${symbol[1]}`,
                 "price": values[2],
-                "likes": values[3] - values[1]
+                "rel_likes": values[3] - values[1]
               },
             ]
           }
@@ -93,11 +93,11 @@ module.exports = function (app) {
             "stockData": [
               {
                 "error": "expternal source error",
-                "likes": -1
+                "rel_likes": 0
               },
               {
                 "error": "expternal source error",
-                "likes": 1
+                "rel_likes": 0
               },
             ]
           }
